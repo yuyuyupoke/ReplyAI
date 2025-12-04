@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="channel-header">
+    <div class="channel-info-left">
+        <img src="{{ channel_info.icon }}" alt="{{ channel_info.name }}" class="channel-icon">
+        <div class="channel-details">
+            <h2 class="channel-name">{{ channel_info.name }}</h2>
+            <p class="channel-subscribers">{{ "{:,}".format(channel_info.subscriber_count) }} subscribers</p>
+        </div>
+    </div>
+    <div class="channel-info-right">
+        <a href="{{ url_for('logout') }}" class="logout-link">Log out</a>
+    </div>
+</div>
+
+<div class="header">
+    <h1>最新の動画</h1>
+    <div class="reply-stats-widget">
+        <div class="stat-main">
+            <span class="stat-label">未返信率：</span>
+            <span class="stat-value rate-value">
+                {% if reply_stats.total > 0 %}
+                {{ 100 - reply_stats.rate }}%
+                {% else %}
+                0%
+                {% endif %}
+            </span>
+        </div>
+        <div class="stat-sub">
+            <span class="detail-item">未返信：<span class="unreplied-count">{{ reply_stats.unreplied }}</span></span>
+            <span class="detail-item">返信済み：<span class="replied-count">{{ reply_stats.replied }}</span></span>
+        </div>
+    </div>
+</div>
+
+<div class="controls">
+    <label for="sort-select">並び替え：</label>
+    <select id="sort-select" onchange="location = this.value;">
+        <option value="{{ url_for('videos', sort='date_desc') }}" {% if current_sort=='date_desc' %}selected{% endif %}>
+            投稿日 (新しい順)</option>
+        <option value="{{ url_for('videos', sort='date_asc') }}" {% if current_sort=='date_asc' %}selected{% endif %}>
+            投稿日 (古い順)</option>
+        <option value="{{ url_for('videos', sort='views_desc') }}" {% if current_sort=='views_desc' %}selected{% endif
+            %}>再生回数</option>
+        <option value="{{ url_for('videos', sort='watch_time_desc') }}" {% if current_sort=='watch_time_desc'
+            %}selected{% endif %}>合計視聴時間</option>
+    </select>
+</div>
+
+<div class="video-list">
+    {% for video in videos %}
+    <a href="{{ url_for('comments', video_id=video.id) }}" class="video-card-link">
+        <div class="video-card-horizontal">
+            <div class="video-thumbnail">
+                <img src="{{ video.thumbnail }}" alt="{{ video.title }}">
+            </div>
+            <div class="video-details">
+                <h3>{{ video.title }}</h3>
+                <div class="video-stats">
+                    <p>投稿日: {{ video.published_at[:10] }}</p>
+                    <p>再生回数: {{ "{:,}".format(video.view_count) }}回</p>
+                    <p>合計視聴時間: {{ "{:,}".format(video.watch_time_mins) }}分</p>
+                    <p>平均視聴時間: {{ video.avg_watch_time_sec }}秒</p>
+                </div>
+            </div>
+            <div class="video-reply-stats">
+                <div class="mini-stat-label">未返信率</div>
+                <div class="mini-stat-value">
+                    {% if video.reply_stats.total > 0 %}
+                    {{ 100 - video.reply_stats.rate }}%
+                    {% else %}
+                    0%
+                    {% endif %}
+                </div>
+                <div class="mini-stat-sub">
+                    未返信: {{ video.reply_stats.unreplied }}
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('videos', page=page-1, sort=current_sort) }}" class="page-link">← 前へ</a>
+    {% else %}
+    <span class="page-link disabled">← 前へ</span>
+    {% endif %}
+
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+
+    {% if page < total_pages %} <a href="{{ url_for('videos', page=page+1, sort=current_sort) }}" class="page-link">次へ
+        →</a>
+        {% else %}
+        <span class="page-link disabled">次へ →</span>
+        {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

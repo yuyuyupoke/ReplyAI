@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="sticky-header-container">
+    <div class="header">
+        <a href="{{ url_for('videos') }}" class="back-link">← HOME</a>
+        <div class="header-video-info">
+            {% if video %}
+            <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="header-video-thumb">
+            <h2 class="header-video-title">{{ video.title }}</h2>
+            {% else %}
+            <h1>コメント返信</h1>
+            {% endif %}
+        </div>
+        <div class="reply-stats-widget">
+            <div class="stat-main">
+                <span class="stat-label">未返信率：</span>
+                <span class="stat-value rate-value">
+                    {% if reply_stats.total > 0 %}
+                    {{ 100 - reply_stats.rate }}%
+                    {% else %}
+                    0%
+                    {% endif %}
+                </span>
+            </div>
+            <div class="stat-sub">
+                <span class="detail-item">未返信：<span class="unreplied-count">{{ reply_stats.unreplied }}</span></span>
+                <span class="detail-item">返信済み：<span class="replied-count">{{ reply_stats.replied }}</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label for="sort-select">並び替え：</label>
+        <select id="sort-select" onchange="location = this.value;">
+            <option value="{{ url_for('comments', video_id=video_id, sort='date_desc') }}" {% if
+                current_sort=='date_desc' %}selected{% endif %}>投稿日 (新しい順)</option>
+            <option value="{{ url_for('comments', video_id=video_id, sort='date_asc') }}" {% if current_sort=='date_asc'
+                %}selected{% endif %}>投稿日 (古い順)</option>
+            <option value="{{ url_for('comments', video_id=video_id, sort='likes_desc') }}" {% if
+                current_sort=='likes_desc' %}selected{% endif %}>いいね数</option>
+        </select>
+    </div>
+</div>
+
+<div class="comments-section">
+    <div class="comments-list" id="comments-list">
+        {% if not comments %}
+        <p class="no-comments">コメントはありません。</p>
+        {% endif %}
+
+        {% for comment in comments %}
+        {% include 'comment_card_v2.html' %}
+        {% endfor %}
+    </div>
+</div>
+
+
+{% endblock %}

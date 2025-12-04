@@ -1,0 +1,58 @@
+<div class="comment-card replied-comment-card" id="comment-{{ comment.id }}">
+    <div class="comment-header">
+        <div class="comment-meta-left">
+            <img src="{{ comment.author_image }}" alt="{{ comment.author_name }}" class="author-img">
+            <span class="author-name">@{{ comment.author_name }}</span>
+            <span class="date">{{ comment.published_at[:10] }}</span>
+        </div>
+        <div class="comment-meta-right">
+            <span class="like-count">いいね数 {{ comment.like_count }}</span>
+            <button class="btn-icon" onclick="rateComment('{{ comment.id }}', 'like')" title="いいね">👍</button>
+            <button class="btn-icon" onclick="rateComment('{{ comment.id }}', 'none')" title="いいね解除">👎</button>
+            <button class="btn-icon" onclick="deleteComment('{{ comment.id }}')" title="削除">🗑️</button>
+        </div>
+    </div>
+    <div class="comment-text">{{ comment.text }}</div>
+
+    <!-- Reply Thread -->
+    <div class="reply-thread" id="thread-{{ comment.id }}">
+        {% for reply in comment.replies %}
+        <div class="reply-item {% if reply.is_mine %}my-reply{% endif %}" id="comment-{{ reply.id }}">
+            <img src="{{ reply.author_image }}" alt="{{ reply.author_name }}" class="reply-author-img">
+            <div class="reply-content">
+                <div class="reply-header">
+                    <span class="reply-author-name">@{{ reply.author_name }}</span>
+                    <span class="reply-date">{{ reply.published_at[:10] }}</span>
+                    {% if reply.is_mine %}
+                    <button class="btn-icon-small" onclick="deleteComment('{{ reply.id }}')" title="削除">🗑️</button>
+                    {% endif %}
+                </div>
+                <div class="reply-text">{{ reply.text }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="reply-section">
+        <div class="prompt-settings">
+            <button class="btn-toggle-prompt" onclick="togglePrompt('{{ comment.id }}')">⚙️ プロンプトをカスタムする</button>
+            <div id="prompt-box-{{ comment.id }}" class="prompt-box" style="display: none;">
+                <textarea id="custom-prompt-{{ comment.id }}" class="prompt-input"
+                    placeholder="例: フレンドリーな感じで、絵文字を多めに使って返信して"></textarea>
+            </div>
+        </div>
+
+        <button class="btn-generate"
+            onclick="generateReply('{{ comment.id }}', '{{ video_id }}', `{{ comment.text | replace('`', '\`') }}`)"
+            id="btn-generate-{{ comment.id }}">✨ 返信案を生成</button>
+        <button class="btn-regenerate"
+            onclick="generateReply('{{ comment.id }}', '{{ video_id }}', `{{ comment.text | replace('`', '\`') }}`)"
+            id="btn-regenerate-{{ comment.id }}" style="display: none;">🔄 再生成</button>
+
+        <div id="suggestions-{{ comment.id }}" class="suggestions-box" style="display: none;"></div>
+
+        <textarea id="reply-text-{{ comment.id }}" class="reply-input" style="display: none;"></textarea>
+        <button id="btn-post-{{ comment.id }}" class="btn-post" onclick="postReply('{{ comment.id }}', true)"
+            style="display: none;">返信を投稿</button>
+    </div>
+</div>
