@@ -1,9 +1,8 @@
 services:
   - type: web
     name: reply-ai
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    env: docker
+    # buildCommand and startCommand are handled by Dockerfile
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -14,6 +13,8 @@ services:
       - key: OAUTHLIB_INSECURE_TRANSPORT
         value: 0
       - key: GOOGLE_CLIENT_SECRET_JSON
+        sync: false # User must provide this in Render Dashboard
+      - key: GEMINI_API_KEY
         sync: false # User must provide this in Render Dashboard
     autoDeploy: true
 
