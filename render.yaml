@@ -9,7 +9,7 @@ services:
           name: reply-ai-db
           property: connectionString
       - key: SECRET_KEY
-        generateValue: true
+        sync: false
       - key: OAUTHLIB_INSECURE_TRANSPORT
         value: 0
       - key: GOOGLE_CLIENT_SECRET_JSON
