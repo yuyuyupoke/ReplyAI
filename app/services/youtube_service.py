@@ -1,6 +1,6 @@
 from googleapiclient.discovery import build
-import auth
-import database
+from app.services import auth
+from app import database
 
 from googleapiclient.errors import HttpError
 

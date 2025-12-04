@@ -6,12 +6,12 @@ import os
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import youtube_service
+from app.services import youtube_service
 
 class TestYouTubeService(unittest.TestCase):
 
-    @patch('youtube_service.get_youtube_client')
-    @patch('youtube_service.database.get_user')
+    @patch('app.services.youtube_service.get_youtube_client')
+    @patch('app.services.youtube_service.database.get_user')
     def test_get_channel_info(self, mock_get_user, mock_get_client):
         # Mock setup
         mock_youtube = MagicMock()
@@ -36,8 +36,8 @@ class TestYouTubeService(unittest.TestCase):
         self.assertEqual(info['subscriber_count'], 1000)
         self.assertEqual(info['icon'], 'http://example.com/icon.jpg')
 
-    @patch('youtube_service.get_youtube_client')
-    @patch('youtube_service.get_analytics_client')
+    @patch('app.services.youtube_service.get_youtube_client')
+    @patch('app.services.youtube_service.get_analytics_client')
     def test_get_recent_videos(self, mock_get_analytics, mock_get_client):
         # Mock setup
         mock_youtube = MagicMock()
@@ -89,8 +89,8 @@ class TestYouTubeService(unittest.TestCase):
         self.assertEqual(videos[0]['view_count'], 100)
         self.assertEqual(videos[0]['watch_time_mins'], 10)
 
-    @patch('youtube_service.get_youtube_client')
-    @patch('youtube_service.database.get_user')
+    @patch('app.services.youtube_service.get_youtube_client')
+    @patch('app.services.youtube_service.database.get_user')
     def test_get_video_comments(self, mock_get_user, mock_get_client):
         # Mock setup
         mock_youtube = MagicMock()
@@ -152,15 +152,20 @@ class TestYouTubeService(unittest.TestCase):
         comments = youtube_service.get_video_comments(1, 'vid1')
 
         # Verification
-        self.assertEqual(len(comments['unreplied']), 1)
-        self.assertEqual(comments['unreplied'][0]['text'], 'Hello')
-        
-        self.assertEqual(len(comments['replied']), 1)
-        self.assertEqual(comments['replied'][0]['text'], 'Question')
-        self.assertEqual(len(comments['replied'][0]['replies']), 1)
-        self.assertTrue(comments['replied'][0]['replies'][0]['is_mine'])
+        # New format: {'comments': [...], 'stats': {...}}
+        # We need to filter by is_replied to check counts/content
+        unreplied = [c for c in comments['comments'] if not c['is_replied']]
+        replied = [c for c in comments['comments'] if c['is_replied']]
 
-    @patch('youtube_service.get_youtube_client')
+        self.assertEqual(len(unreplied), 1)
+        self.assertEqual(unreplied[0]['text'], 'Hello')
+        
+        self.assertEqual(len(replied), 1)
+        self.assertEqual(replied[0]['text'], 'Question')
+        self.assertEqual(len(replied[0]['replies']), 1)
+        self.assertTrue(replied[0]['replies'][0]['is_mine'])
+
+    @patch('app.services.youtube_service.get_youtube_client')
     def test_post_reply(self, mock_get_client):
         mock_youtube = MagicMock()
         mock_get_client.return_value = mock_youtube
@@ -177,7 +182,7 @@ class TestYouTubeService(unittest.TestCase):
             }
         )
 
-    @patch('youtube_service.get_youtube_client')
+    @patch('app.services.youtube_service.get_youtube_client')
     def test_delete_comment(self, mock_get_client):
         mock_youtube = MagicMock()
         mock_get_client.return_value = mock_youtube
@@ -186,9 +191,9 @@ class TestYouTubeService(unittest.TestCase):
         
         mock_youtube.comments().delete.assert_called_with(id='comment1')
 
-    @patch('youtube_service.auth.get_credentials_from_user')
-    @patch('youtube_service.database.get_user')
-    @patch('youtube_service.AuthorizedSession')
+    @patch('app.services.youtube_service.auth.get_credentials_from_user')
+    @patch('app.services.youtube_service.database.get_user')
+    @patch('app.services.youtube_service.AuthorizedSession')
     def test_rate_comment(self, mock_auth_session_cls, mock_get_user, mock_get_creds):
         mock_session = MagicMock()
         mock_auth_session_cls.return_value = mock_session

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: reply-ai
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reply-ai-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OAUTHLIB_INSECURE_TRANSPORT
+        value: 0
+      - key: GOOGLE_CLIENT_SECRET_JSON
+        sync: false # User must provide this in Render Dashboard
+    autoDeploy: true
+
+databases:
+  - name: reply-ai-db
+    databaseName: replyai
+    user: replyai_user
+    plan: free # Free tier (expires in 90 days, good for MVP)

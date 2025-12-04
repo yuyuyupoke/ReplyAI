@@ -1,32 +1,18 @@
 import os
-from flask import Flask, redirect, request, session, url_for, render_template, jsonify
-from dotenv import load_dotenv
-import auth
-import database
+from flask import redirect, request, session, url_for, render_template, jsonify
 from googleapiclient.discovery import build
+from google.auth.exceptions import RefreshError
+from app import app
+from app import database
+from app.services import auth
 
-load_dotenv()
-
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY')
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1' # For dev only
-
-# Fix for ngrok (https -> http)
-from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-
-# --- Dev Mode Configuration ---
-USE_MOCK_DATA = os.environ.get('USE_MOCK_DATA', 'False').lower() == 'true'
-
-if USE_MOCK_DATA:
-    print("⚠️ RUNNING IN DEV MODE WITH MOCK DATA ⚠️")
-    import mock_youtube_service as youtube_service
+# Import services based on config
+if app.config['USE_MOCK_DATA']:
+    from app.services import mock_youtube_service as youtube_service
 else:
-    import youtube_service
+    from app.services import youtube_service
 
-@app.context_processor
-def inject_dev_mode():
-    return dict(is_dev_mode=USE_MOCK_DATA)
+from app.services import ai_service
 
 @app.route('/')
 def index():
@@ -46,7 +32,7 @@ def login():
 
 @app.route('/dev_login')
 def dev_login():
-    if not USE_MOCK_DATA:
+    if not app.config['USE_MOCK_DATA']:
         return "Dev login is disabled in production", 403
     
     # Create or get a mock user
@@ -94,8 +80,6 @@ def oauth2callback():
     
     session['user_id'] = user_id
     return redirect(url_for('videos'))
-
-from google.auth.exceptions import RefreshError
 
 @app.route('/videos')
 def videos():
@@ -216,8 +200,6 @@ def post_reply():
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
-import ai_service
-
 @app.route('/generate_reply', methods=['POST'])
 def generate_reply():
     if 'user_id' not in session:
@@ -292,6 +274,3 @@ def rate_comment():
         return {'status': 'error', 'message': 'Token expired, please log in again'}, 401
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
-
-if __name__ == '__main__':
-    app.run(debug=False, port=8080)

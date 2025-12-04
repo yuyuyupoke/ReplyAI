@@ -1,5 +1,5 @@
-import database
-import ai_service
+from app import database
+from app.services import ai_service
 import os
 
 # Mock user ID for testing
