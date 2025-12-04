@@ -7,6 +7,11 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
+
+if not app.secret_key:
+    import secrets
+    print("⚠️ WARNING: SECRET_KEY not found in environment. Generating a temporary one. Sessions will be lost on restart.")
+    app.secret_key = secrets.token_hex(16)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1' # For dev only
 
 # Fix for ngrok (https -> http)
