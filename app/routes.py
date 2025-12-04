@@ -91,7 +91,7 @@ def videos():
         return redirect(url_for('index'))
     
     try:
-        sort_by = request.args.get('sort', 'date_desc')
+        sort_by = request.args.get('sort', 'unreplied_desc')
         page = request.args.get('page', 1, type=int)
         per_page = 50
         

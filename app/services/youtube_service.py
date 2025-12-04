@@ -36,6 +36,11 @@ def get_channel_info(user_id):
 def get_recent_videos(user_id, limit=200, sort_by='date_desc'):
     youtube = get_youtube_client(user_id)
     
+    # Special handling for 'unreplied_desc' to save quota
+    # We only fetch top 50 videos and check their reply status
+    if sort_by == 'unreplied_desc':
+        limit = 50
+
     # 1. Get Uploads playlist ID
     channels_response = youtube.channels().list(
         mine=True,
@@ -125,15 +130,17 @@ def get_recent_videos(user_id, limit=200, sort_by='date_desc'):
         stats = stats_map.get(vid, {})
         analytics = analytics_map.get(vid, {'estimatedMinutesWatched': 0, 'averageViewDuration': 0})
         
-        videos.append({
+        video_data = {
             'id': vid,
             'title': snippet['title'],
             'thumbnail': snippet['thumbnails'].get('medium', snippet['thumbnails'].get('default'))['url'],
             'published_at': snippet['publishedAt'],
             'view_count': int(stats.get('viewCount', 0)),
             'watch_time_mins': int(analytics['estimatedMinutesWatched']),
-            'avg_watch_time_sec': int(analytics['averageViewDuration'])
-        })
+            'avg_watch_time_sec': int(analytics['averageViewDuration']),
+            'unreplied_count': 0 # Default
+        }
+        videos.append(video_data)
 
     # 5. Sorting
     if sort_by == 'date_desc':
@@ -144,10 +151,24 @@ def get_recent_videos(user_id, limit=200, sort_by='date_desc'):
         videos.sort(key=lambda x: x['view_count'], reverse=True)
     elif sort_by == 'watch_time_desc':
         videos.sort(key=lambda x: x['watch_time_mins'], reverse=True)
+    elif sort_by == 'unreplied_desc':
+        # Fetch comment stats for each video to calculate unreplied count
+        print("[INFO] Sorting by unreplied_desc: Fetching comments for top 50 videos...")
+        for video in videos:
+            try:
+                # Fetch only 1 page of comments to save quota
+                data = get_video_comments(user_id, video['id'], max_pages=1)
+                video['unreplied_count'] = data['stats']['unreplied']
+            except Exception as e:
+                print(f"[WARN] Failed to fetch comments for video {video['id']}: {e}")
+                video['unreplied_count'] = 0
+        
+        # Sort by unreplied count descending
+        videos.sort(key=lambda x: x['unreplied_count'], reverse=True)
 
     return videos
 
-def get_video_comments(user_id, video_id, sort_by='date_desc'):
+def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
     youtube = get_youtube_client(user_id)
     user = database.get_user(user_id)
     my_channel_id = user['channel_id']
@@ -156,8 +177,12 @@ def get_video_comments(user_id, video_id, sort_by='date_desc'):
     replied_comments = []
     
     next_page_token = None
+    page_count = 0
     
     while True:
+        if max_pages and page_count >= max_pages:
+            break
+            
         try:
             response = youtube.commentThreads().list(
                 part='snippet,replies',
@@ -168,8 +193,11 @@ def get_video_comments(user_id, video_id, sort_by='date_desc'):
             ).execute()
         except HttpError as e:
             if e.resp.status == 403 and 'commentsDisabled' in str(e):
-                return {'unreplied': [], 'replied': []}
+                return {'unreplied': [], 'replied': [], 'stats': {'total': 0, 'replied': 0, 'unreplied': 0, 'rate': 0}}
             raise e
+
+        page_count += 1
+
 
         for item in response['items']:
             top_level_comment = item['snippet']['topLevelComment']
