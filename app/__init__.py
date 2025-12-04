@@ -34,3 +34,8 @@ def inject_dev_mode():
     return dict(is_dev_mode=app.config['USE_MOCK_DATA'])
 
 from app import routes
+from app import database
+
+# Initialize DB on startup (creates tables if not exist)
+with app.app_context():
+    database.init_db()
