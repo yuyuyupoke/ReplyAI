@@ -3,22 +3,18 @@
         <div class="comment-meta-left">
             <img src="{{ comment.author_image }}" alt="{{ comment.author_name }}" class="author-img">
             <span class="author-name">@{{ comment.author_name }}</span>
-            <span class="date">{{ comment.published_at[:10] }}</span>
+            <span class="date">
+                {{ comment.published_at[:10] }}
+                {% if comment.is_edited %}
+                <span title="編集済み ({{ comment.updated_at[:10] }})">✏️</span>
+                {% endif %}
+            </span>
         </div>
         <div class="comment-meta-right" id="meta-{{ comment.id }}" data-rating="{{ comment.viewer_rating }}">
-            <span class="like-count">いいね数 {{ comment.like_count }}</span>
+            <span class="like-count">👍 {{ comment.like_count }}</span>
+            <!-- Like count restored -->
 
-            <!-- Like Button -->
-            <button class="btn-icon like-btn {% if comment.viewer_rating == 'like' %}active{% endif %}"
-                onclick="rateComment('{{ comment.id }}', 'like', this)" title="いいね">
-                <span class="icon-emoji">👍</span>
-            </button>
-
-            <!-- Dislike Button -->
-            <button class="btn-icon dislike-btn {% if comment.viewer_rating == 'dislike' %}active{% endif %}"
-                onclick="rateComment('{{ comment.id }}', 'dislike', this)" title="低評価">
-                <span class="icon-emoji">👎</span>
-            </button>
+            <!-- Like/Dislike buttons removed due to API limitations -->
 
             <button class="btn-icon" onclick="deleteComment('{{ comment.id }}')" title="削除">
                 <span class="icon-emoji">🗑️</span>

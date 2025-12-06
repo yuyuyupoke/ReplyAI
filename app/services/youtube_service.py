@@ -218,13 +218,15 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
             
             comment_data = {
                 'id': top_level_comment['id'], # Use TopLevelComment ID, not Thread ID
-                'text': top_level_snippet['textDisplay'],
+                'text': top_level_snippet.get('textOriginal', top_level_snippet['textDisplay']), # Prefer textOriginal
                 'author_name': top_level_snippet['authorDisplayName'],
                 'author_image': top_level_snippet['authorProfileImageUrl'],
                 'published_at': top_level_snippet['publishedAt'],
+                'updated_at': top_level_snippet['updatedAt'],
                 'like_count': top_level_snippet.get('likeCount', 0),
                 'viewer_rating': top_level_snippet.get('viewerRating', 'none'), # Fetch viewer rating
-                'video_id': video_id
+                'video_id': video_id,
+                'is_edited': top_level_snippet['updatedAt'] != top_level_snippet['publishedAt']
             }
             
             if replied_by_me:
@@ -355,29 +357,4 @@ def delete_comment(user_id, comment_id):
     youtube = get_youtube_client(user_id)
     youtube.comments().delete(id=comment_id).execute()
 
-from google.auth.transport.requests import AuthorizedSession
-
-def rate_comment(user_id, comment_id, rating):
-    """
-    rating: 'like', 'dislike', 'none'
-    """
-    print(f"[DEBUG] rate_comment called with user_id={user_id}, comment_id={comment_id}, rating={rating}")
-    user = database.get_user(user_id)
-    print(f"[DEBUG] user found: {user['google_id'] if user else 'None'}")
-    creds = auth.get_credentials_from_user(user)
-    print(f"[DEBUG] creds created: {creds.valid}")
-    authed_session = AuthorizedSession(creds)
-    
-    url = 'https://www.googleapis.com/youtube/v3/comments/setRating'
-    params = {
-        'id': comment_id,
-        'rating': rating
-    }
-    
-    print(f"[DEBUG] rate_comment: POST {url} params={params}")
-    response = authed_session.post(url, params=params)
-    print(f"[DEBUG] rate_comment response: {response.status_code} {response.text}")
-    
-    if response.status_code != 204:
-        # 204 No Content is expected for success
-        raise Exception(f"Failed to rate comment: {response.status_code} {response.text}")
+# rate_comment function removed due to API limitations

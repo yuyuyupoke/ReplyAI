@@ -507,10 +507,7 @@ h1 {
     font-weight: bold;
 }
 
-.like-count::before {
-    content: '👍';
-    margin-right: 4px;
-}
+/* .like-count::before removed to avoid double icon */
 
 .comment-text {
     font-size: 1rem;

@@ -252,9 +252,6 @@ def delete_comment():
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
-@app.route('/rate_comment', methods=['POST'])
-def rate_comment():
-    if 'user_id' not in session:
         return {'status': 'error', 'message': 'Unauthorized'}, 401
     
     if not database.get_user(session['user_id']):

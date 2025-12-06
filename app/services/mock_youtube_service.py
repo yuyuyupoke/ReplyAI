@@ -66,10 +66,12 @@ def get_video_comments(user_id, video_id, sort_by='date_desc'):
             'author_name': f"User_{i}",
             'author_image': f"https://api.dicebear.com/7.x/avataaars/svg?seed={i}",
             'published_at': (datetime.now() - timedelta(hours=i)).isoformat(),
+            'updated_at': (datetime.now() - timedelta(hours=i)).isoformat() if i != 1 else datetime.now().isoformat(), # Make 2nd comment edited
             'like_count': random.randint(0, 10),
             'viewer_rating': random.choice(['like', 'none', 'none', 'none']), # Mostly none, some liked
             'video_id': video_id,
-            'is_replied': False
+            'is_replied': False,
+            'is_edited': i == 1 # Make 2nd comment edited
         })
         
     # Generate some replied comments
@@ -144,6 +146,4 @@ def delete_comment(user_id, comment_id):
     print(f"[MOCK] Deleted comment {comment_id}")
     return
 
-def rate_comment(user_id, comment_id, rating):
-    print(f"[MOCK] Rated comment {comment_id} as {rating}")
-    return
+# rate_comment removed
