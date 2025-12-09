@@ -7,25 +7,27 @@
         <div class="header-video-info">
             {% if video %}
             <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="header-video-thumb">
-            <h2 class="header-video-title">{{ video.title }}</h2>
+            <div>
+                <h2 class="header-video-title">{{ video.title }}</h2>
+                <a href="https://www.youtube.com/watch?v={{ video_id }}" target="_blank"
+                    class="youtube-link">YouTubeで見る</a>
+            </div>
             {% else %}
             <h1>コメント返信</h1>
             {% endif %}
         </div>
-        <div class="reply-stats-widget">
-            <div class="stat-main">
-                <span class="stat-label">未返信率：</span>
-                <span class="stat-value rate-value">
-                    {% if reply_stats.total > 0 %}
-                    {{ 100 - reply_stats.rate }}%
-                    {% else %}
-                    0%
-                    {% endif %}
-                </span>
+        <div class="stats-widget">
+            <div class="stat-item unreplied">
+                <span class="stat-label">未返信</span>
+                <span class="stat-count">{{ reply_stats.unreplied }}</span>
             </div>
-            <div class="stat-sub">
-                <span class="detail-item">未返信：<span class="unreplied-count">{{ reply_stats.unreplied }}</span></span>
-                <span class="detail-item">返信済み：<span class="replied-count">{{ reply_stats.replied }}</span></span>
+            <div class="stat-item pending">
+                <span class="stat-label">保留</span>
+                <span class="stat-count">{{ reply_stats.pending }}</span>
+            </div>
+            <div class="stat-item replied">
+                <span class="stat-label">返信済み</span>
+                <span class="stat-count">{{ reply_stats.replied }}</span>
             </div>
         </div>
     </div>

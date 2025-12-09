@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 from google.auth.exceptions import RefreshError
 from app import app
 from app import database
-from app.services import auth
+from app.utils.supabase_client import supabase
 
 # Import services based on config
 if app.config['USE_MOCK_DATA']:
@@ -18,80 +18,116 @@ from app.services import ai_service
 def index():
     if 'user_id' in session:
         return redirect(url_for('videos'))
-    return render_template('login.html')
+    return render_template('login.html',
+                         supabase_url=os.environ.get('SUPABASE_URL'), 
+                         supabase_key=os.environ.get('SUPABASE_KEY'))
 
 @app.route('/login')
 def login():
-    flow = auth.get_flow(url_for('oauth2callback', _external=True))
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent')
-    session['state'] = state
-    return redirect(authorization_url)
+    url = os.environ.get('SUPABASE_URL')
+    key = os.environ.get('SUPABASE_KEY')
+    
+    # Pass Supabase config to template
+    return render_template('login.html', 
+                         supabase_url=url, 
+                         supabase_key=key)
 
-@app.route('/dev_login')
-def dev_login():
-    if not app.config['USE_MOCK_DATA']:
-        return "Dev login is disabled in production", 403
-    
-    # Create or get a mock user
-    mock_google_id = "mock_user_001"
-    user_id = database.save_user(
-        google_id=mock_google_id,
-        channel_id="mock_channel_id",
-        access_token="mock_access_token",
-        refresh_token="mock_refresh_token",
-        expires_in="2099-12-31T23:59:59"
-    )
-    
-    session['user_id'] = user_id
-    return redirect(url_for('videos'))
+@app.route('/auth/callback')
+def auth_callback():
+    # Render the callback page which handles the hash fragment
+    return render_template('callback.html',
+                         supabase_url=os.environ.get('SUPABASE_URL'), 
+                         supabase_key=os.environ.get('SUPABASE_KEY'))
+
+@app.route('/api/auth/session', methods=['POST'])
+def save_session():
+    try:
+        data = request.get_json()
+        user = data.get('user')
+        # ... (rest of extraction)
+        # Extract tokens
+        supabase_jwt = data.get('access_token') # Supabase JWT
+        access_token = data.get('provider_token') # Google Access Token
+        refresh_token = data.get('provider_refresh_token') # Google Refresh Token
+        
+        if not user or not access_token:
+            return jsonify({'status': 'error', 'message': 'Missing user or token data'}), 400
+            
+        user_id = user['id']
+        
+        # Extract Google ID
+        google_id = None
+        if user.get('identities'):
+            # Try to find Google identity
+            for identity in user['identities']:
+                if identity['provider'] == 'google':
+                    google_id = identity['identity_data'].get('sub') or identity['id']
+                    break
+        
+        # Save tokens to database
+        save_result = database.save_user_tokens(
+            user_id=user_id,
+            google_id=google_id,
+            channel_id=None, # Will fetch below
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=None,
+            jwt=supabase_jwt # Pass JWT for RLS
+        )
+        
+        if not save_result:
+             print("[WARN] Failed to save user tokens in database (first attempt).")
+        
+        # Fetch Channel ID
+        try:
+            import google.oauth2.credentials
+            creds = google.oauth2.credentials.Credentials(token=access_token)
+            youtube = build('youtube', 'v3', credentials=creds)
+            response = youtube.channels().list(mine=True, part='id').execute()
+            if response['items']:
+                channel_id = response['items'][0]['id']
+                database.save_user_tokens(
+                    user_id=user_id,
+                    google_id=google_id,
+                    channel_id=channel_id,
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    token_expiry=None,
+                    jwt=supabase_jwt # Pass JWT for RLS
+                )
+        except Exception as e:
+            print(f"[WARN] Failed to fetch channel ID: {e}")
+
+        # Set Flask Session
+        session['user_id'] = user_id
+        
+        return jsonify({'status': 'success', 'redirect_url': url_for('videos')})
+        
+    except Exception as e:
+        print(f"[ERROR] Save session failed: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/logout')
 def logout():
     session.clear()
+    # We should also sign out from Supabase on the client side, 
+    # but for now clearing the server session is enough to protect backend routes.
+    # Ideally, logout should also be a client-side action or redirect to a page that signs out.
     return redirect(url_for('index'))
 
-@app.route('/oauth2callback')
-def oauth2callback():
-    if 'state' not in session:
-        return redirect(url_for('login'))
-        
-    state = session['state']
-    flow = auth.get_flow(url_for('oauth2callback', _external=True))
-    flow.fetch_token(authorization_response=request.url)
-
-    credentials = flow.credentials
-    
-    # Get channel ID
-    youtube = build('youtube', 'v3', credentials=credentials)
-    response = youtube.channels().list(mine=True, part='id').execute()
-    channel_id = response['items'][0]['id']
-    
-    # Save user
-    user_id = database.save_user(
-        google_id=channel_id, # Use channel_id as unique identifier
-        channel_id=channel_id,
-        access_token=credentials.token,
-        refresh_token=credentials.refresh_token,
-        expires_in=credentials.expiry.isoformat() if credentials.expiry else ''
-    )
-    
-    session['user_id'] = user_id
-    return redirect(url_for('videos'))
 
 @app.route('/videos')
 def videos():
     if 'user_id' not in session:
         return redirect(url_for('index'))
     
+    # Verify user exists in our DB (tokens saved)
     if not database.get_user(session['user_id']):
         session.clear()
         return redirect(url_for('index'))
     
     try:
-        sort_by = request.args.get('sort', 'unreplied_desc')
+        sort_by = request.args.get('sort', 'date_desc')
         page = request.args.get('page', 1, type=int)
         per_page = 50
         
@@ -109,7 +145,6 @@ def videos():
         for video in videos_subset:
             try:
                 # Reuse get_video_comments to get stats
-                # Note: This adds N API calls where N is page size (e.g. 10)
                 data = youtube_service.get_video_comments(session['user_id'], video['id'])
                 video['reply_stats'] = data['stats']
             except Exception as e:
@@ -140,22 +175,18 @@ def comments(video_id):
         session.clear()
         return redirect(url_for('index'))
     
-    try:
-        sort_by = request.args.get('sort', 'date_desc')
-        comments_data = youtube_service.get_video_comments(session['user_id'], video_id, sort_by=sort_by)
-        video_details = youtube_service.get_video_details(session['user_id'], video_id)
-        
-        return render_template('comments.html', 
-                             comments=comments_data['comments'],
-                             video_id=video_id,
-                             video=video_details,
-                             current_sort=sort_by,
-                             reply_stats=comments_data['stats'])
-    except RefreshError:
-        session.clear()
-        return redirect(url_for('login'))
-    except Exception as e:
-        return f"An error occurred: {str(e)}", 500
+    sort_by = request.args.get('sort', 'date_desc')
+    comments_data = youtube_service.get_video_comments(session['user_id'], video_id, sort_by)
+    video_details = youtube_service.get_video_details(session['user_id'], video_id)
+    video_title = video_details.get('title', 'Unknown Video')
+    
+    return render_template('comments.html', 
+                         comments=comments_data['comments'],
+                         video_id=video_id,
+                         video=video_details,
+                         video_title=video_title,
+                         current_sort=sort_by,
+                         reply_stats=comments_data['stats'])
 
 @app.route('/post_reply', methods=['POST'])
 def post_reply():
@@ -174,13 +205,12 @@ def post_reply():
         response = youtube_service.post_reply(session['user_id'], parent_id, text)
         
         # Log the reply for AI learning
-        # We need original_comment and ai_suggestion from frontend to log properly
         original_comment = data.get('original_comment', '')
         ai_suggestion = data.get('ai_suggestion', '')
         
         database.log_reply(
             user_id=session['user_id'],
-            video_id=data.get('video_id', ''), # Need to pass video_id from frontend
+            video_id=data.get('video_id', ''),
             comment_id=parent_id,
             original_comment=original_comment,
             ai_suggestion=ai_suggestion,
@@ -229,7 +259,10 @@ def generate_reply():
         
         return jsonify({'suggestions': suggestions})
     except Exception as e:
-        return {'status': 'error', 'message': str(e)}, 500
+        import traceback
+        tb = traceback.format_exc()
+        print(tb) # Still print to server log
+        return {'status': 'error', 'message': f"{str(e)}\n\nTraceback:\n{tb}"}, 500
 
 @app.route('/delete_comment', methods=['POST'])
 def delete_comment():
@@ -252,6 +285,9 @@ def delete_comment():
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
+@app.route('/rate_comment', methods=['POST'])
+def rate_comment():
+    if 'user_id' not in session:
         return {'status': 'error', 'message': 'Unauthorized'}, 401
     
     if not database.get_user(session['user_id']):
@@ -262,12 +298,60 @@ def delete_comment():
         data = request.get_json()
         comment_id = data.get('comment_id')
         rating = data.get('rating') # 'like', 'dislike', 'none'
-        print(f"[DEBUG] app.py rate_comment request: comment_id={comment_id}, rating={rating}")
         
         youtube_service.rate_comment(session['user_id'], comment_id, rating)
         return {'status': 'success'}
     except RefreshError:
         session.clear()
         return {'status': 'error', 'message': 'Token expired, please log in again'}, 401
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
+
+@app.route('/mark_complete', methods=['POST'])
+def mark_complete():
+    if 'user_id' not in session:
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    if not database.get_user(session['user_id']):
+        session.clear()
+        return {'status': 'error', 'message': 'User not found'}, 401
+    
+    try:
+        data = request.get_json()
+        comment_id = data.get('comment_id')
+        
+        # Get user tokens to retrieve JWT
+        user_data = database.get_user(session['user_id'])
+        jwt = user_data.get('jwt') if user_data else None
+
+        if database.mark_thread_complete(session['user_id'], comment_id, jwt=jwt):
+            return {'status': 'success'}
+        else:
+            return {'status': 'error', 'message': 'Failed to mark complete'}, 500
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
+
+
+@app.route('/unmark_complete', methods=['POST'])
+def unmark_complete():
+    if 'user_id' not in session:
+        return {'status': 'error', 'message': 'Unauthorized'}, 401
+    
+    if not database.get_user(session['user_id']):
+        session.clear()
+        return {'status': 'error', 'message': 'User not found'}, 401
+    
+    try:
+        data = request.get_json()
+        comment_id = data.get('comment_id')
+        
+        # Get user tokens to retrieve JWT
+        user_data = database.get_user(session['user_id'])
+        jwt = user_data.get('jwt') if user_data else None
+
+        if database.delete_thread_state(session['user_id'], comment_id, jwt=jwt):
+            return {'status': 'success'}
+        else:
+            return {'status': 'error', 'message': 'Failed to unmark complete'}, 500
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500

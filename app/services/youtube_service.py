@@ -11,6 +11,16 @@ def get_youtube_client(user_id):
 
 from datetime import datetime, timedelta
 
+def get_video_stats(user_id, video_id):
+    """
+    Helper to get stats for a video.
+    Used by get_recent_videos for sorting.
+    """
+    # Limit max_pages to 5 (500 comments) to avoid excessive API usage/latency during sort
+    data = get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=5)
+    stats = data['stats']
+    return stats['unreplied'], stats
+
 def get_analytics_client(user_id):
     user = database.get_user(user_id)
     creds = auth.get_credentials_from_user(user)
@@ -155,13 +165,8 @@ def get_recent_videos(user_id, limit=200, sort_by='date_desc'):
         # Fetch comment stats for each video to calculate unreplied count
         print("[INFO] Sorting by unreplied_desc: Fetching comments for top 50 videos...")
         for video in videos:
-            try:
-                # Fetch only 1 page of comments to save quota
-                data = get_video_comments(user_id, video['id'], max_pages=1)
-                video['unreplied_count'] = data['stats']['unreplied']
-            except Exception as e:
-                print(f"[WARN] Failed to fetch comments for video {video['id']}: {e}")
-                video['unreplied_count'] = 0
+            unreplied_count, _ = get_video_stats(user_id, video['id'])
+            video['unreplied_count'] = unreplied_count
         
         # Sort by unreplied count descending
         videos.sort(key=lambda x: x['unreplied_count'], reverse=True)
@@ -172,9 +177,14 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
     youtube = get_youtube_client(user_id)
     user = database.get_user(user_id)
     my_channel_id = user['channel_id']
+    jwt = user.get('jwt')
+
+    # Fetch completed threads
+    completed_thread_ids = set(database.get_completed_threads(user_id, jwt=jwt))
 
     unreplied_comments = []
     replied_comments = []
+    pending_comments = []
     
     next_page_token = None
     page_count = 0
@@ -193,7 +203,7 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
             ).execute()
         except HttpError as e:
             if e.resp.status == 403 and 'commentsDisabled' in str(e):
-                return {'unreplied': [], 'replied': [], 'stats': {'total': 0, 'replied': 0, 'unreplied': 0, 'rate': 0}}
+                return {'comments': [], 'stats': {'total': 0, 'replied': 0, 'pending': 0, 'unreplied': 0, 'rate': 0}}
             raise e
 
         page_count += 1
@@ -202,6 +212,7 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
         for item in response['items']:
             top_level_comment = item['snippet']['topLevelComment']
             top_level_snippet = top_level_comment['snippet']
+            reply_count = item['snippet']['totalReplyCount']
             
             # Filter A: Top level comment
             # Filter B: Not from me
@@ -216,6 +227,29 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
                         replied_by_me = True
                         break
             
+            # Check if manually completed
+            is_manually_completed = top_level_comment['id'] in completed_thread_ids
+            
+            # Process replies
+            raw_replies = item.get('replies', {}).get('comments', [])
+            processed_replies = []
+            for reply in raw_replies:
+                rs = reply['snippet']
+                is_mine_reply = rs['authorChannelId']['value'] == my_channel_id
+                processed_replies.append({
+                    'id': reply['id'],
+                    'text': rs.get('textOriginal', rs['textDisplay']),
+                    'author_name': rs['authorDisplayName'],
+                    'author_image': rs['authorProfileImageUrl'],
+                    'published_at': rs['publishedAt'],
+                    'updated_at': rs['updatedAt'],
+                    'like_count': rs.get('likeCount', 0),
+                    'video_id': video_id,
+                    'is_mine': is_mine_reply
+                })
+            # Sort replies by date (oldest first for conversation flow)
+            processed_replies.sort(key=lambda x: x['published_at'])
+
             comment_data = {
                 'id': top_level_comment['id'], # Use TopLevelComment ID, not Thread ID
                 'text': top_level_snippet.get('textOriginal', top_level_snippet['textDisplay']), # Prefer textOriginal
@@ -225,28 +259,19 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
                 'updated_at': top_level_snippet['updatedAt'],
                 'like_count': top_level_snippet.get('likeCount', 0),
                 'viewer_rating': top_level_snippet.get('viewerRating', 'none'), # Fetch viewer rating
+                'reply_count': reply_count,
                 'video_id': video_id,
+                'is_replied': replied_by_me,
+                'is_manually_completed': is_manually_completed,
+                'replies': processed_replies, # Use processed replies
+                'viewer_rating': top_level_snippet.get('viewerRating', 'none'),
                 'is_edited': top_level_snippet['updatedAt'] != top_level_snippet['publishedAt']
             }
             
             if replied_by_me:
-                # Include replies for replied comments
-                comment_data['replies'] = []
-                if 'replies' in item:
-                    for reply in item['replies']['comments']:
-                        reply_snippet = reply['snippet']
-                        comment_data['replies'].append({
-                            'id': reply['id'],
-                            'author_name': reply_snippet['authorDisplayName'],
-                            'author_image': reply_snippet['authorProfileImageUrl'],
-                            'text': reply_snippet['textDisplay'],
-                            'published_at': reply_snippet['publishedAt'],
-                            'is_mine': reply_snippet['authorChannelId']['value'] == my_channel_id
-                        })
-                print(f"[DEBUG] Replied comment {item['id']}: {len(comment_data['replies'])} replies")
-                for idx, r in enumerate(comment_data['replies']):
-                    print(f"[DEBUG]   Reply {idx}: {r['author_name'][:20]}... is_mine={r['is_mine']}")
                 replied_comments.append(comment_data)
+            elif is_manually_completed:
+                pending_comments.append(comment_data)
             else:
                 unreplied_comments.append(comment_data)
         
@@ -254,40 +279,43 @@ def get_video_comments(user_id, video_id, sort_by='date_desc', max_pages=None):
         if not next_page_token:
             break
             
-    # Sorting
+    # Sort each list
     def sort_comments(comments, sort_key):
         if sort_key == 'date_desc':
-            comments.sort(key=lambda x: x['published_at'], reverse=True)
+            return sorted(comments, key=lambda x: x['published_at'], reverse=True)
         elif sort_key == 'date_asc':
-            comments.sort(key=lambda x: x['published_at'])
+            return sorted(comments, key=lambda x: x['published_at'])
         elif sort_key == 'likes_desc':
-            comments.sort(key=lambda x: x['like_count'], reverse=True)
+            return sorted(comments, key=lambda x: x['like_count'], reverse=True)
+        else:
+            # Default to date_desc
+            return sorted(comments, key=lambda x: x['published_at'], reverse=True)
 
-    sort_comments(unreplied_comments, sort_by)
-    sort_comments(replied_comments, sort_by)
-    
-    # Mark status
-    for c in unreplied_comments:
-        c['is_replied'] = False
-    for c in replied_comments:
-        c['is_replied'] = True
+    unreplied_comments = sort_comments(unreplied_comments, sort_by)
+    pending_comments = sort_comments(pending_comments, sort_by)
+    replied_comments = sort_comments(replied_comments, sort_by)
 
-    # Combine: Unreplied first, then Replied
-    combined_comments = unreplied_comments + replied_comments
+    # Combine: Unreplied -> Pending -> Replied
+    combined_comments = unreplied_comments + pending_comments + replied_comments
 
     # Calculate stats
     unreplied_count = len(unreplied_comments)
+    pending_count = len(pending_comments)
     replied_count = len(replied_comments)
-    total_comments = unreplied_count + replied_count
+    total_comments = unreplied_count + pending_count + replied_count
     reply_rate = 0
     if total_comments > 0:
         reply_rate = int((replied_count / total_comments) * 100)
-
+        
+    if total_comments > 0:
+        reply_rate = int((replied_count / total_comments) * 100)
+        
     return {
         'comments': combined_comments,
         'stats': {
             'total': total_comments,
             'replied': replied_count,
+            'pending': pending_count,
             'unreplied': unreplied_count,
             'rate': reply_rate
         }
@@ -351,6 +379,15 @@ def post_reply(user_id, parent_id, text):
             }
         }
     ).execute()
+    
+    # Auto-clear "pending" status if it exists
+    try:
+        user = database.get_user(user_id)
+        jwt = user.get('jwt')
+        database.delete_thread_state(user_id, parent_id, jwt=jwt)
+    except Exception as e:
+        print(f"[WARN] Failed to auto-clear thread state: {e}")
+
     return response
 
 def delete_comment(user_id, comment_id):

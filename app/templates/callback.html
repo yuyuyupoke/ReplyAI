@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Authenticating...</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .content {
+            text-align: center;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="content">
+        <div class="loader"></div>
+        <h2 id="status">Finalizing Login...</h2>
+        <p id="message">Please wait while we secure your session.</p>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = '{{ supabase_url }}';
+        const supabaseKey = '{{ supabase_key }}';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function handleAuth() {
+            try {
+                // Check current session
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (error) throw error;
+
+                if (!session) {
+                    // Sometimes the hash hasn't been processed yet, wait for onAuthStateChange
+                    console.log("No session found yet, waiting for event...");
+                    return;
+                }
+
+                await sendSessionToBackend(session);
+
+            } catch (e) {
+                console.error("Auth Error:", e);
+                document.getElementById('status').innerText = "Authentication Failed";
+                document.getElementById('message').innerText = e.message;
+            }
+        }
+
+        async function sendSessionToBackend(session) {
+            document.getElementById('status').innerText = "Syncing with Server...";
+
+            try {
+                const response = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        access_token: session.access_token,
+                        refresh_token: session.refresh_token,
+                        provider_token: session.provider_token,
+                        provider_refresh_token: session.provider_refresh_token,
+                        user: session.user
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    window.location.href = result.redirect_url;
+                } else {
+                    throw new Error(result.message || 'Server sync failed');
+                }
+            } catch (e) {
+                console.error("Sync Error:", e);
+                document.getElementById('status').innerText = "Server Sync Failed";
+                document.getElementById('message').innerText = "Could not save session to server. " + e.message;
+            }
+        }
+
+        // Listen for auth state changes (handles the redirect hash processing)
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log("Auth Event:", event);
+            if (event === 'SIGNED_IN' && session) {
+                sendSessionToBackend(session);
+            }
+        });
+
+        // Also try immediately in case we are already signed in
+        handleAuth();
+    </script>
+</body>
+
+</html>

@@ -66,9 +66,14 @@ def get_credentials_from_user(user):
     client_config = get_client_config()
     
     expiry = None
-    if user['expires_in']:
+    # Check for 'expires_in' (legacy) or 'token_expiry' (Supabase)
+    expiry_str = user.get('expires_in') or user.get('token_expiry')
+    
+    if expiry_str:
         try:
-            expiry = datetime.fromisoformat(user['expires_in'])
+            # Handle Supabase timestamp format if needed, or ISO format
+            # Supabase might return '2023-01-01T00:00:00+00:00'
+            expiry = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
         except ValueError:
             pass
 

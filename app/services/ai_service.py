@@ -18,7 +18,7 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
         examples_text += "    以下の過去のやり取りにおける「あなたの返信」の文体、絵文字の選び方、文の長さを**徹底的に模倣**してください。\n"
         examples_text += "    内容は今回のコメントに合わせて変えますが、**「話し方の癖」はこれらを完全にコピー**してください。\n\n"
         for i, ex in enumerate(examples, 1):
-            examples_text += f"    データ{i}:\n    視聴者: {ex['comment']}\n    あなた: {ex['reply']}\n\n"
+            examples_text += f"    データ{i}:\n    視聴者: {ex['input']}\n    あなた: {ex['output']}\n\n"
     else:
         examples_text = "    (学習データなし: 一般的な親しみやすいYouTuberとして振る舞ってください)\n"
 
@@ -80,3 +80,6 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return [f"Error generating reply: {str(e)}"], None
+
+
+

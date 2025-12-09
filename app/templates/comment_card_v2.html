@@ -1,4 +1,5 @@
-<div class="comment-card {% if comment.is_replied %}replied-comment-card{% endif %}" id="comment-{{ comment.id }}">
+<div class="comment-card {% if comment.is_manually_completed %}pending-comment-card{% elif comment.is_replied %}replied-comment-card{% endif %}"
+    id="comment-{{ comment.id }}">
     <div class="comment-header">
         <div class="comment-meta-left">
             <img src="{{ comment.author_image }}" alt="{{ comment.author_name }}" class="author-img">
@@ -15,6 +16,18 @@
             <!-- Like count restored -->
 
             <!-- Like/Dislike buttons removed due to API limitations -->
+
+            {% if not comment.is_replied and not comment.is_manually_completed %}
+            <button class="btn-icon" onclick="markComplete('{{ comment.id }}')" title="既読にする（保留）">
+                <span class="icon-emoji">✅</span>
+            </button>
+            {% endif %}
+
+            {% if comment.is_manually_completed %}
+            <button class="btn-icon" onclick="unmarkComplete('{{ comment.id }}')" title="既読を取り消す">
+                <span class="icon-emoji">↩️</span>
+            </button>
+            {% endif %}
 
             <button class="btn-icon" onclick="deleteComment('{{ comment.id }}')" title="削除">
                 <span class="icon-emoji">🗑️</span>
