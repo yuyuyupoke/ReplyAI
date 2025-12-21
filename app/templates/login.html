@@ -29,9 +29,9 @@
         console.error("Supabase config missing. URL:", supabaseUrl, "Key:", supabaseKey);
     }
 
-    let supabase;
+    let supabaseClient;
     try {
-        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
     } catch (e) {
         console.error("Failed to initialize Supabase client:", e);
         alert("Failed to initialize Supabase. See console.");
@@ -42,7 +42,7 @@
         btn.disabled = true;
         btn.innerText = 'Connecting...';
 
-        if (!supabase) {
+        if (!supabaseClient) {
             alert("Supabase client not initialized.");
             btn.disabled = false;
             return;
@@ -50,7 +50,7 @@
 
         try {
             console.log("Attempting sign in with Google...");
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: '{{ url_for("auth_callback", _external=True) }}',
