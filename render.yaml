@@ -16,6 +16,10 @@ services:
         sync: false # User must provide this in Render Dashboard
       - key: GEMINI_API_KEY
         sync: false # User must provide this in Render Dashboard
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
     autoDeploy: true
 
 databases:
