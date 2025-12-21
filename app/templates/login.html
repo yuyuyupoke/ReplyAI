@@ -20,18 +20,36 @@
     const supabaseUrl = '{{ supabase_url }}';
     const supabaseKey = '{{ supabase_key }}';
 
-    if (!supabaseUrl || !supabaseKey) {
-        alert("Configuration Error: Supabase URL or Key is missing.");
+    console.log("Supabase URL Check:", supabaseUrl);
+    // Don't log the key for security, just check existence
+    console.log("Supabase Key Check:", supabaseKey ? "Present" : "Missing");
+
+    if (!supabaseUrl || supabaseUrl === 'None' || !supabaseKey || supabaseKey === 'None') {
+        alert("Configuration Error: Supabase URL or Key is missing in Render Environment Variables. Please check the console.");
+        console.error("Supabase config missing. URL:", supabaseUrl, "Key:", supabaseKey);
     }
 
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    let supabase;
+    try {
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    } catch (e) {
+        console.error("Failed to initialize Supabase client:", e);
+        alert("Failed to initialize Supabase. See console.");
+    }
 
     document.getElementById('login-btn').addEventListener('click', async () => {
         const btn = document.getElementById('login-btn');
         btn.disabled = true;
         btn.innerText = 'Connecting...';
 
+        if (!supabase) {
+            alert("Supabase client not initialized.");
+            btn.disabled = false;
+            return;
+        }
+
         try {
+            console.log("Attempting sign in with Google...");
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
@@ -44,6 +62,7 @@
                 }
             });
             if (error) throw error;
+            console.log("Sign in initiated:", data);
         } catch (e) {
             console.error("Login Error:", e);
             alert('Login failed: ' + e.message);
