@@ -58,6 +58,8 @@
     {% endif %}
 
     <div class="reply-section">
+
+
         <!-- Generate Button -->
         <div class="generate-btn-wrapper">
             <button class="btn-generate"
@@ -78,7 +80,6 @@
             <!-- Hidden fields to store context for logging -->
             <input type="hidden" id="original-comment-{{ comment.id }}" value="{{ comment.text }}">
             <input type="hidden" id="ai-suggestion-{{ comment.id }}" value="">
-            <input type="hidden" id="custom-prompt-{{ comment.id }}" value="">
 
             <button id="btn-post-{{ comment.id }}" class="btn-post"
                 onclick="postReply('{{ comment.id }}', {{ 'true' if comment.is_replied else 'false' }}, '{{ video_id }}')">返信</button>

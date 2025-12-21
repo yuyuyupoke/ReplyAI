@@ -23,8 +23,7 @@ async function generateReply(commentId, videoId, commentText) {
             },
             body: JSON.stringify({
                 comment_text: commentText,
-                video_id: videoId,
-                custom_instruction: null
+                video_id: videoId
             }),
         });
 
@@ -197,14 +196,7 @@ function toggleSection(id, header) {
     }
 }
 
-function togglePrompt(commentId) {
-    const box = document.getElementById(`prompt-box-${commentId}`);
-    if (box.style.display === 'none') {
-        box.style.display = 'block';
-    } else {
-        box.style.display = 'none';
-    }
-}
+
 
 async function deleteComment(commentId) {
     if (!confirm('本当にこのコメントを削除しますか？取り消し不可能です。')) return;

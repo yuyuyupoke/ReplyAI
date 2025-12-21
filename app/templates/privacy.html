@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="legal-document">
+    <h1>プライバシーポリシー</h1>
+    <p>最終更新日: 2025年12月10日</p>
+
+    <h2>1. Googleプライバシーポリシーへの準拠</h2>
+    <p>
+        本アプリケーション「ReplyAI」は、YouTube API Servicesを使用しています。
+        当サービスを利用することで、ユーザーは<a href="http://www.google.com/policies/privacy"
+            target="_blank">Googleプライバシーポリシー</a>に同意したものとみなされます。
+    </p>
+
+    <h2>2. 収集する情報</h2>
+    <p>
+        当社は、YouTube APIを通じて以下の情報にアクセスします：
+    <ul>
+        <li>YouTubeチャンネルの基本情報（チャンネル名、アイコン）</li>
+        <li>動画のメタデータおよび統計情報</li>
+        <li>コメントおよび返信の内容</li>
+    </ul>
+    </p>
+
+    <h2>3. 情報の利用目的</h2>
+    <p>
+        収集した情報は、以下の目的でのみ使用されます：
+    <ul>
+        <li>コメント管理・返信支援機能の提供</li>
+        <li>サービス向上のための統計分析（個人を特定しない形での利用）</li>
+    </ul>
+    </p>
+
+    <h2>4. 第三者への提供</h2>
+    <p>
+        当社は、ユーザーの事前の同意がある場合を除き、取得した個人情報を第三者に提供することはありません。
+    </p>
+
+    <h2>5. データの保存と削除</h2>
+    <p>
+        APIを通じて取得したデータは、最大30日間キャッシュされる場合があります。
+        また、ユーザーはいつでも<a href="https://security.google.com/settings/security/permissions"
+            target="_blank">Googleセキュリティ設定ページ</a>から、本アプリのアクセス権を取り消すことができます。
+    </p>
+
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('index') }}">TOPに戻る</a>
+    </div>
+</div>
+{% endblock %}

@@ -246,3 +246,5 @@ def get_completed_threads(user_id, jwt=None):
         else:
             print(f"Error getting completed threads: {e}")
         return []
+
+

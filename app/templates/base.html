@@ -12,9 +12,9 @@
     <div class="container">
         {% block content %}{% endblock %}
         <footer class="footer">
-
-            <a href="https://www.youtube.com/t/terms" target="_blank">YouTube利用規約</a> |
-            <a href="https://policies.google.com/privacy" target="_blank">Googleプライバシーポリシー</a>
+            <a href="{{ url_for('terms') }}">利用規約</a> |
+            <a href="{{ url_for('privacy') }}">プライバシーポリシー</a>
+            <span class="powered-by">Powered by YouTube</span>
         </footer>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

@@ -14,6 +14,14 @@ else:
 
 from app.services import ai_service
 
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -217,8 +225,9 @@ def post_reply():
             final_reply=text
         )
         
+        
         return {
-            'status': 'success', 
+ 
             'id': response['id'],
             'author_image': response['snippet'].get('authorProfileImageUrl', ''),
             'author_name': response['snippet'].get('authorDisplayName', ''),
@@ -241,13 +250,30 @@ def generate_reply():
     
     try:
         data = request.get_json()
-        comment_text = data.get('comment')
-        custom_instruction = data.get('instruction')
-        
+        comment_text = data.get('comment_text')
+        video_id = data.get('video_id')
+
+        video_title = None
+        video_description = None
+        if video_id:
+            try:
+                # Reuse get_video_details (CACHE THIS IN A REAL APP!)
+                video_details = youtube_service.get_video_details(session['user_id'], video_id)
+                if video_details:
+                    video_title = video_details.get('title')
+                    video_description = video_details.get('description')
+            except Exception as e:
+                print(f"[WARN] Failed to fetch video context for AI: {e}")
+
         # Get few-shot examples from database
         examples = database.get_few_shot_examples(session['user_id'])
         
-        suggestions, usage = ai_service.generate_reply_suggestions(comment_text, custom_instruction, examples)
+        suggestions, usage = ai_service.generate_reply_suggestions(
+            comment_text, 
+            examples,
+            video_title=video_title,
+            video_description=video_description
+        )
         
         if usage:
             database.log_usage(

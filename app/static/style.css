@@ -1173,3 +1173,51 @@ h1 {
     color: inherit !important;
     border: none !important;
 }
+
+/* Legal Document Support */
+.legal-document {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    line-height: 1.8;
+}
+
+.legal-document h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 20px;
+    color: #333;
+}
+
+.legal-document h2 {
+    font-size: 1.4rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.legal-document ul {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.legal-document li {
+    margin-bottom: 10px;
+}
+
+.legal-document a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.legal-document a:hover {
+    text-decoration: underline;
+}
+
+/* Powered by YouTube Branding */
+.powered-by {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: #

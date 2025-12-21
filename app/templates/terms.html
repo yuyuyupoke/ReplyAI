@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="legal-document">
+    <h1>利用規約 (Terms of Service)</h1>
+    <p>最終更新日: 2025年12月10日</p>
+
+    <h2>1. 規約への同意</h2>
+    <p>
+        本アプリケーション「ReplyAI」を利用することにより、ユーザーは以下の規約に同意したものとみなされます。
+    </p>
+
+    <h2>2. YouTube利用規約への準拠</h2>
+    <p>
+        本サービスはYouTube APIを利用して機能を提供しています。
+        そのため、本サービスを利用するユーザーは、<a href="https://www.youtube.com/t/terms" target="_blank">YouTube利用規約 (YouTube Terms of
+            Service)</a> に拘束されることに同意するものとします。
+    </p>
+
+    <h2>3. 免責事項</h2>
+    <p>
+        当社は、本サービスの利用により生じた、いかなる損害（データの消失、YouTubeアカウントの停止等を含む）についても、一切の責任を負わないものとします。
+        ユーザーは自己の責任において本サービスを利用するものとします。
+    </p>
+
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('index') }}">TOPに戻る</a>
+    </div>
+</div>
+{% endblock %}

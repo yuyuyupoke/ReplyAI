@@ -2,14 +2,14 @@ import os
 from google import genai
 from google.genai import types
 
-def generate_reply_suggestions(comment_text, custom_instruction=None, examples=None):
+def generate_reply_suggestions(comment_text, examples=None, video_title=None, video_description=None):
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         return ["Error: GEMINI_API_KEY not set."], None
 
     client = genai.Client(api_key=api_key)
     
-    instruction_text = custom_instruction if custom_instruction else "フレンドリーで親しみやすい口調で、必ず最後に感謝の意を簡潔に示し、絵文字を1つ付けてください。"
+    instruction_text = "フレンドリーで親しみやすい口調で、必ず最後に感謝の意を簡潔に示し、絵文字を1つ付けてください。"
 
     # Construct Few-Shot Examples with Strong Instruction
     examples_text = ""
@@ -19,11 +19,21 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
         examples_text += "    内容は今回のコメントに合わせて変えますが、**「話し方の癖」はこれらを完全にコピー**してください。\n\n"
         for i, ex in enumerate(examples, 1):
             examples_text += f"    データ{i}:\n    視聴者: {ex['input']}\n    あなた: {ex['output']}\n\n"
-    else:
-        examples_text = "    (学習データなし: 一般的な親しみやすいYouTuberとして振る舞ってください)\n"
+    # Construct Video Context
+    context_text = ""
+    if video_title:
+        context_text += f"\n    【動画コンテキスト】\n    この返信は以下の動画に対するコメントへのものです。\n    タイトル: {video_title}\n"
+        if video_description:
+            # Truncate description to 300 chars
+            desc_short = (video_description[:300] + '...') if len(video_description) > 300 else video_description
+            context_text += f"    概要: {desc_short}\n"
 
     prompt = f"""
     役割: あなたはYouTubeチャンネルの運営者です。
+
+
+    
+    {context_text}
     
     {examples_text}
     
@@ -54,7 +64,7 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp', # Or gemini-1.5-flash
+            model='gemini-2.5-flash-lite', # Stable model
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.7,
@@ -72,7 +82,7 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
         usage = {
             'input_tokens': response.usage_metadata.prompt_token_count,
             'output_tokens': response.usage_metadata.candidates_token_count,
-            'model_name': 'gemini-2.0-flash-exp'
+            'model_name': 'gemini-2.5-flash-lite'
         }
             
         return suggestions[:3], usage
@@ -80,6 +90,8 @@ def generate_reply_suggestions(comment_text, custom_instruction=None, examples=N
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return [f"Error generating reply: {str(e)}"], None
+
+
 
 
 

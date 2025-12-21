@@ -14,3 +14,15 @@ instance/
 # OS
 .DS_Store
 *.log
+
+# Documentation (Internal Business Strategy)
+documents/
+
+# Proprietary Database Schema & Tests
+database/sql/
+tests/
+
+# Internal Tools & Prompts
+releases/
+scripts/
+app/prompts/
