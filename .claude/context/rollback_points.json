@@ -1,0 +1,8 @@
+{
+  "rollback_points": [],
+  "metadata": {
+    "last_updated": "",
+    "total_points": 0,
+    "description": "Safe points for reverting changes"
+  }
+}

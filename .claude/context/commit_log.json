@@ -1,0 +1,24 @@
+{
+  "commits": [
+    {
+      "timestamp": "2026-01-09T12:20:17Z",
+      "branch": "test/workflow-test",
+      "files_changed": 1,
+      "lines_added": 17,
+      "lines_deleted": 0,
+      "file_types": "txt",
+      "staged_files": [
+        "test_ai_workflow.txt"
+      ],
+      "commit_hash": "14e56fcbf69c458dd0e74ad1026d88e27ae8c154",
+      "commit_message": "Test: Add test file for AI workflow verification",
+      "ai_summary": "Changed 1 files (+17 -0)",
+      "short_hash": "14e56fc"
+    }
+  ],
+  "metadata": {
+    "last_updated": "2026-01-09T12:20:17Z",
+    "total_commits": 1,
+    "ai_context_version": "1.0"
+  }
+}

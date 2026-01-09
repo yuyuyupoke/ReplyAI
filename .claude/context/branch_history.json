@@ -1,0 +1,19 @@
+{
+  "branches": [
+    {
+      "timestamp": "2026-01-09T12:18:27Z",
+      "type": "branch_create",
+      "branch_name": "test/workflow-test",
+      "branch_type": "test",
+      "base_commit": "09dd0058e7245a22beff3281275bfc5f1bc245d3",
+      "short_hash": "09dd005",
+      "description": "Testing AI context tracking workflow",
+      "status": "active"
+    }
+  ],
+  "metadata": {
+    "last_updated": "2026-01-09T12:18:27Z",
+    "total_branches": 1,
+    "active_branch": "test/workflow-test"
+  }
+}
