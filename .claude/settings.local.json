@@ -8,7 +8,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(./scripts/auto_merge_to_main.sh:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(printf:*)"
     ]
   }
 }
