@@ -1,6 +1,24 @@
 {
   "commits": [
     {
+      "timestamp": "2026-01-09T12:21:31Z",
+      "branch": "test/workflow-test",
+      "files_changed": 13,
+      "lines_added": 1005,
+      "lines_deleted": 0,
+      "file_types": "md,sh,json",
+      "staged_files": [
+        ".claude/",
+        "documents/",
+        "scripts/",
+        "CLAUDE.md"
+      ],
+      "commit_hash": "74c5a8421e42a3e12b5e9c7fbb60e0c5a8b8db4d",
+      "short_hash": "74c5a84",
+      "commit_message": "feat: Add AI context tracking system",
+      "ai_summary": "Changed 13 files (+1005 -0)"
+    },
+    {
       "timestamp": "2026-01-09T12:20:17Z",
       "branch": "test/workflow-test",
       "files_changed": 1,
@@ -17,8 +35,8 @@
     }
   ],
   "metadata": {
-    "last_updated": "2026-01-09T12:20:17Z",
-    "total_commits": 1,
+    "last_updated": "2026-01-09T12:21:31Z",
+    "total_commits": 2,
     "ai_context_version": "1.0"
   }
 }
