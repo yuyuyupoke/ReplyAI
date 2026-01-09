@@ -9,7 +9,9 @@
       "Bash(git commit:*)",
       "Bash(./scripts/auto_merge_to_main.sh:*)",
       "Bash(git stash:*)",
-      "Bash(printf:*)"
+      "Bash(printf:*)",
+      "Bash(git rm:*)",
+      "Bash(git diff-index:*)"
     ]
   }
 }
