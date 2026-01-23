@@ -52,12 +52,12 @@
         // Initialize Supabase
         const supabaseUrl = '{{ supabase_url }}';
         const supabaseKey = '{{ supabase_key }}';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         async function handleAuth() {
             try {
                 // Check current session
-                const { data: { session }, error } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
 
                 if (session) {
                     await sendSessionToBackend(session);
@@ -78,20 +78,20 @@
 
                     if (accessToken) {
                         // Get user details using the access token
-                        const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
-                        
+                        const { data: { user }, error: userError } = await supabaseClient.auth.getUser(accessToken);
+
                         if (userError) throw userError;
-                        
+
                         if (user) {
-                             const sessionData = {
-                                 access_token: accessToken,
-                                 refresh_token: refreshToken,
-                                 provider_token: providerToken,
-                                 provider_refresh_token: providerRefreshToken,
-                                 user: user
-                             };
-                             await sendSessionToBackend(sessionData);
-                             return;
+                            const sessionData = {
+                                access_token: accessToken,
+                                refresh_token: refreshToken,
+                                provider_token: providerToken,
+                                provider_refresh_token: providerRefreshToken,
+                                user: user
+                            };
+                            await sendSessionToBackend(sessionData);
+                            return;
                         }
                     }
                 }
@@ -141,7 +141,7 @@
         }
 
         // Listen for auth state changes (handles the redirect hash processing)
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log("Auth Event:", event);
             if (event === 'SIGNED_IN' && session) {
                 sendSessionToBackend(session);
