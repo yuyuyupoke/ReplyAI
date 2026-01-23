@@ -59,16 +59,48 @@
                 // Check current session
                 const { data: { session }, error } = await supabase.auth.getSession();
 
+                if (session) {
+                    await sendSessionToBackend(session);
+                    return;
+                }
+
                 if (error) throw error;
+
+                // Fallback: Check for hash directly if getSession missed it
+                // This handles cases where the Supabase client doesn't pick up the hash immediately
+                if (window.location.hash && window.location.hash.includes('access_token')) {
+                    console.log("Attempting manual hash parsing...");
+                    const params = new URLSearchParams(window.location.hash.substring(1));
+                    const accessToken = params.get('access_token');
+                    const refreshToken = params.get('refresh_token');
+                    const providerToken = params.get('provider_token');
+                    const providerRefreshToken = params.get('provider_refresh_token');
+
+                    if (accessToken) {
+                        // Get user details using the access token
+                        const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+                        
+                        if (userError) throw userError;
+                        
+                        if (user) {
+                             const sessionData = {
+                                 access_token: accessToken,
+                                 refresh_token: refreshToken,
+                                 provider_token: providerToken,
+                                 provider_refresh_token: providerRefreshToken,
+                                 user: user
+                             };
+                             await sendSessionToBackend(sessionData);
+                             return;
+                        }
+                    }
+                }
 
                 if (!session) {
                     // Sometimes the hash hasn't been processed yet, wait for onAuthStateChange
                     console.log("No session found yet, waiting for event...");
                     return;
                 }
-
-                await sendSessionToBackend(session);
-
             } catch (e) {
                 console.error("Auth Error:", e);
                 document.getElementById('status').innerText = "Authentication Failed";
