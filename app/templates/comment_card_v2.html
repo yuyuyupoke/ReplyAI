@@ -2,6 +2,7 @@
     id="comment-{{ comment.id }}">
     <div class="comment-header">
         <div class="comment-meta-left">
+            <input type="checkbox" class="comment-checkbox" data-comment-id="{{ comment.id }}" data-video-id="{{ video_id }}" data-comment-text="{{ comment.text | replace('`', '\`') }}">
             <img src="{{ comment.author_image }}" alt="{{ comment.author_name }}" class="author-img">
             <span class="author-name">@{{ comment.author_name }}</span>
             <span class="date">
@@ -72,6 +73,12 @@
 
         <!-- Suggestions Chips -->
         <div id="suggestions-{{ comment.id }}" class="suggestions-box" style="display: none;"></div>
+
+        <!-- Template Selector -->
+        <div class="template-selector">
+            <button onclick="toggleTemplates('{{ comment.id }}')" class="btn-template">📝 テンプレート</button>
+            <div id="templates-{{ comment.id }}" class="template-dropdown" style="display: none;"></div>
+        </div>
 
         <!-- Manual Reply Area (Always Visible) -->
         <div class="reply-input-wrapper">

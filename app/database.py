@@ -225,7 +225,7 @@ def get_completed_threads(user_id, jwt=None):
     """
     try:
         client = supabase_admin if supabase_admin else supabase
-        
+
         # If no admin client and JWT provided, authenticate as user
         if not supabase_admin and jwt:
             client = create_client(url, key)
@@ -236,7 +236,7 @@ def get_completed_threads(user_id, jwt=None):
             .eq("user_id", user_id)\
             .eq("status", "completed")\
             .execute()
-        
+
         return [row['comment_id'] for row in response.data]
     except Exception as e:
         # Suppress "table not found" error to avoid log spam
@@ -246,5 +246,47 @@ def get_completed_threads(user_id, jwt=None):
         else:
             print(f"Error getting completed threads: {e}")
         return []
+
+def create_template(user_id, name, text):
+    """
+    Creates a reply template.
+    """
+    try:
+        data = {
+            'user_id': user_id,
+            'name': name,
+            'text': text,
+            'created_at': datetime.utcnow().isoformat()
+        }
+        client = supabase_admin if supabase_admin else supabase
+        result = client.table('reply_templates').insert(data).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        print(f"Error creating template: {e}")
+        return None
+
+def get_templates(user_id):
+    """
+    Retrieves all templates for a user.
+    """
+    try:
+        client = supabase_admin if supabase_admin else supabase
+        result = client.table('reply_templates').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+        return result.data if result.data else []
+    except Exception as e:
+        print(f"Error fetching templates: {e}")
+        return []
+
+def delete_template(template_id, user_id):
+    """
+    Deletes a template.
+    """
+    try:
+        client = supabase_admin if supabase_admin else supabase
+        result = client.table('reply_templates').delete().eq('id', template_id).eq('user_id', user_id).execute()
+        return result.data
+    except Exception as e:
+        print(f"Error deleting template: {e}")
+        return None
 
 

@@ -33,15 +33,38 @@
     </div>
 
     <div class="controls">
+        <div class="filter-tabs">
+            <a href="{{ url_for('comments', video_id=video_id, sort=current_sort, filter='unreplied') }}"
+               class="tab-btn {% if current_filter=='unreplied' %}active{% endif %}">
+                未返信 <span class="tab-count">({{ reply_stats.unreplied }})</span>
+            </a>
+            <a href="{{ url_for('comments', video_id=video_id, sort=current_sort, filter='pending') }}"
+               class="tab-btn {% if current_filter=='pending' %}active{% endif %}">
+                保留 <span class="tab-count">({{ reply_stats.pending }})</span>
+            </a>
+            <a href="{{ url_for('comments', video_id=video_id, sort=current_sort, filter='replied') }}"
+               class="tab-btn {% if current_filter=='replied' %}active{% endif %}">
+                返信済み <span class="tab-count">({{ reply_stats.replied }})</span>
+            </a>
+        </div>
+
         <label for="sort-select">並び替え：</label>
         <select id="sort-select" onchange="location = this.value;">
-            <option value="{{ url_for('comments', video_id=video_id, sort='date_desc') }}" {% if
+            <option value="{{ url_for('comments', video_id=video_id, sort='date_desc', filter=current_filter) }}" {% if
                 current_sort=='date_desc' %}selected{% endif %}>投稿日 (新しい順)</option>
-            <option value="{{ url_for('comments', video_id=video_id, sort='date_asc') }}" {% if current_sort=='date_asc'
+            <option value="{{ url_for('comments', video_id=video_id, sort='date_asc', filter=current_filter) }}" {% if current_sort=='date_asc'
                 %}selected{% endif %}>投稿日 (古い順)</option>
-            <option value="{{ url_for('comments', video_id=video_id, sort='likes_desc') }}" {% if
+            <option value="{{ url_for('comments', video_id=video_id, sort='likes_desc', filter=current_filter) }}" {% if
                 current_sort=='likes_desc' %}selected{% endif %}>いいね数</option>
         </select>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div class="bulk-actions-bar" style="display: none;" id="bulk-bar">
+        <span id="bulk-count">0件選択中</span>
+        <button onclick="bulkGenerate()" class="btn-bulk">一括返信生成</button>
+        <button onclick="bulkMarkComplete()" class="btn-bulk">一括保留</button>
+        <button onclick="clearSelection()" class="btn-bulk-cancel">選択解除</button>
     </div>
 </div>
 

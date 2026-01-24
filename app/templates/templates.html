@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <a href="{{ url_for('videos') }}" class="back-link">← HOME</a>
+    <h1>返信テンプレート</h1>
+</div>
+
+<div class="template-create">
+    <h2>新規テンプレート作成</h2>
+    <input type="text" id="template-name" placeholder="テンプレート名（例：お礼）" maxlength="50">
+    <textarea id="template-text" placeholder="返信文（例：ありがとうございます😊）" maxlength="500"></textarea>
+    <button onclick="saveTemplate()" class="btn-primary">保存</button>
+</div>
+
+<div class="template-list">
+    <h2>保存済みテンプレート</h2>
+    {% if templates %}
+        {% for template in templates %}
+        <div class="template-card" data-id="{{ template.id }}">
+            <h3>{{ template.name }}</h3>
+            <p>{{ template.text }}</p>
+            <button onclick="deleteTemplate('{{ template.id }}')" class="btn-delete">削除</button>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-templates">テンプレートがありません。上記のフォームから作成してください。</p>
+    {% endif %}
+</div>
+
+<script>
+async function saveTemplate() {
+    const name = document.getElementById('template-name').value.trim();
+    const text = document.getElementById('template-text').value.trim();
+
+    if (!name || !text) {
+        alert('テンプレート名と返信文を入力してください');
+        return;
+    }
+
+    const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, text})
+    });
+
+    if (response.ok) {
+        location.reload();
+    } else {
+        alert('保存に失敗しました');
+    }
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('このテンプレートを削除しますか？')) return;
+
+    const response = await fetch(`/api/templates/${id}`, {method: 'DELETE'});
+    if (response.ok) {
+        location.reload();
+    } else {
+        alert('削除に失敗しました');
+    }
+}
+</script>
+{% endblock %}

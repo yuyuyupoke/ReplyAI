@@ -11,7 +11,13 @@
       "Bash(git stash:*)",
       "Bash(printf:*)",
       "Bash(git rm:*)",
-      "Bash(git diff-index:*)"
+      "Bash(git diff-index:*)",
+      "Bash(cat:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Skill(ui-test)",
+      "Bash(curl:*)",
+      "Bash(python -m py_compile:*)"
     ]
   }
 }

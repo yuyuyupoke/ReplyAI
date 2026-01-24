@@ -26,19 +26,30 @@ def terms():
 def index():
     if 'user_id' in session:
         return redirect(url_for('videos'))
+
+    # Always use the current request URL to build redirect URL
+    # This works for localhost, ngrok, and production
+    redirect_url = url_for('auth_callback', _external=True)
+
     return render_template('login.html',
-                         supabase_url=os.environ.get('SUPABASE_URL'), 
-                         supabase_key=os.environ.get('SUPABASE_KEY'))
+                         supabase_url=os.environ.get('SUPABASE_URL'),
+                         supabase_key=os.environ.get('SUPABASE_KEY'),
+                         redirect_url=redirect_url)
 
 @app.route('/login')
 def login():
     url = os.environ.get('SUPABASE_URL')
     key = os.environ.get('SUPABASE_KEY')
-    
+
+    # Always use the current request URL to build redirect URL
+    # This works for localhost, ngrok, and production
+    redirect_url = url_for('auth_callback', _external=True)
+
     # Pass Supabase config to template
-    return render_template('login.html', 
-                         supabase_url=url, 
-                         supabase_key=key)
+    return render_template('login.html',
+                         supabase_url=url,
+                         supabase_key=key,
+                         redirect_url=redirect_url)
 
 @app.route('/auth/callback')
 def auth_callback():
@@ -115,10 +126,21 @@ def save_session():
         print(f"[ERROR] Save session failed: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/dev_login')
+def dev_login():
+    """Development mode login - bypasses OAuth for local testing"""
+    if not app.config['USE_MOCK_DATA']:
+        return "Dev login only available in mock data mode", 403
+
+    # Set a mock user ID in session
+    session['user_id'] = 'dev_user_12345'
+
+    return redirect(url_for('videos'))
+
 @app.route('/logout')
 def logout():
     session.clear()
-    # We should also sign out from Supabase on the client side, 
+    # We should also sign out from Supabase on the client side,
     # but for now clearing the server session is enough to protect backend routes.
     # Ideally, logout should also be a client-side action or redirect to a page that signs out.
     return redirect(url_for('index'))
@@ -135,7 +157,7 @@ def videos():
         return redirect(url_for('index'))
     
     try:
-        sort_by = request.args.get('sort', 'date_desc')
+        sort_by = request.args.get('sort', 'unreplied_desc')
         page = request.args.get('page', 1, type=int)
         per_page = 50
         
@@ -182,18 +204,32 @@ def comments(video_id):
     if not database.get_user(session['user_id']):
         session.clear()
         return redirect(url_for('index'))
-    
+
     sort_by = request.args.get('sort', 'date_desc')
+    filter_by = request.args.get('filter', 'unreplied')  # Default filter: unreplied
     comments_data = youtube_service.get_video_comments(session['user_id'], video_id, sort_by)
     video_details = youtube_service.get_video_details(session['user_id'], video_id)
     video_title = video_details.get('title', 'Unknown Video')
-    
-    return render_template('comments.html', 
-                         comments=comments_data['comments'],
+
+    # Filter comments based on status
+    all_comments = comments_data['comments']
+    if filter_by == 'unreplied':
+        filtered_comments = [c for c in all_comments if not c['is_replied'] and not c['is_manually_completed']]
+    elif filter_by == 'pending':
+        filtered_comments = [c for c in all_comments if c['is_manually_completed']]
+    elif filter_by == 'replied':
+        filtered_comments = [c for c in all_comments if c['is_replied']]
+    else:
+        filtered_comments = all_comments
+
+    return render_template('comments.html',
+                         comments=filtered_comments,
+                         all_comments=all_comments,
                          video_id=video_id,
                          video=video_details,
                          video_title=video_title,
                          current_sort=sort_by,
+                         current_filter=filter_by,
                          reply_stats=comments_data['stats'])
 
 @app.route('/post_reply', methods=['POST'])
@@ -227,7 +263,7 @@ def post_reply():
         
         
         return {
- 
+            'status': 'success',
             'id': response['id'],
             'author_image': response['snippet'].get('authorProfileImageUrl', ''),
             'author_name': response['snippet'].get('authorDisplayName', ''),
@@ -362,15 +398,15 @@ def mark_complete():
 def unmark_complete():
     if 'user_id' not in session:
         return {'status': 'error', 'message': 'Unauthorized'}, 401
-    
+
     if not database.get_user(session['user_id']):
         session.clear()
         return {'status': 'error', 'message': 'User not found'}, 401
-    
+
     try:
         data = request.get_json()
         comment_id = data.get('comment_id')
-        
+
         # Get user tokens to retrieve JWT
         user_data = database.get_user(session['user_id'])
         jwt = user_data.get('jwt') if user_data else None
@@ -381,3 +417,54 @@ def unmark_complete():
             return {'status': 'error', 'message': 'Failed to unmark complete'}, 500
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
+
+@app.route('/templates')
+def templates():
+    """Template management page"""
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+
+    if not database.get_user(session['user_id']):
+        session.clear()
+        return redirect(url_for('index'))
+
+    templates = database.get_templates(session['user_id'])
+    return render_template('templates.html', templates=templates)
+
+@app.route('/api/templates', methods=['POST'])
+def create_template():
+    """Create template API"""
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    data = request.json
+    name = data.get('name')
+    text = data.get('text')
+
+    if not name or not text:
+        return jsonify({'status': 'error', 'message': 'Name and text required'}), 400
+
+    template = database.create_template(session['user_id'], name, text)
+    if template:
+        return jsonify({'status': 'success', 'template': template})
+    return jsonify({'status': 'error', 'message': 'Failed to create template'}), 500
+
+@app.route('/api/templates/<template_id>', methods=['DELETE'])
+def delete_template_route(template_id):
+    """Delete template API"""
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    result = database.delete_template(template_id, session['user_id'])
+    if result:
+        return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'Failed to delete template'}), 500
+
+@app.route('/api/templates/list', methods=['GET'])
+def list_templates():
+    """Get all templates API (for comment page)"""
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+
+    templates = database.get_templates(session['user_id'])
+    return jsonify({'status': 'success', 'templates': templates})

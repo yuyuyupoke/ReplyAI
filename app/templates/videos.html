@@ -10,6 +10,7 @@
         </div>
     </div>
     <div class="channel-info-right">
+        <a href="{{ url_for('templates') }}" class="logout-link" style="margin-right: 10px;">テンプレート管理</a>
         <a href="{{ url_for('logout') }}" class="logout-link">Log out</a>
     </div>
 </div>
@@ -68,12 +69,9 @@
             </div>
             <div class="video-reply-stats">
                 <div class="mini-stat-label">未返信率</div>
-                <div class="mini-stat-value">
-                    {% if video.reply_stats.total > 0 %}
-                    {{ 100 - video.reply_stats.rate }}%
-                    {% else %}
-                    0%
-                    {% endif %}
+                {% set unreplied_rate = 100 - video.reply_stats.rate if video.reply_stats.total > 0 else 0 %}
+                <div class="mini-stat-value {% if unreplied_rate >= 50 %}urgent{% elif unreplied_rate >= 30 %}warning{% else %}safe{% endif %}">
+                    {{ unreplied_rate }}%
                 </div>
                 <div class="mini-stat-sub">
                     未返信: {{ video.reply_stats.unreplied }}

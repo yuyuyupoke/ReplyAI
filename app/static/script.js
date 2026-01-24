@@ -13,7 +13,18 @@ async function generateReply(commentId, videoId, commentText) {
 
     activeBtn.disabled = true;
     const originalText = activeBtn.textContent;
-    activeBtn.textContent = "生成中... 🤖";
+
+    // Add spinner and timer display
+    let elapsedSeconds = 0;
+    const timerId = setInterval(() => {
+        elapsedSeconds++;
+        const timerEl = document.getElementById(`timer-${commentId}`);
+        if (timerEl) {
+            timerEl.textContent = elapsedSeconds + 's';
+        }
+    }, 1000);
+
+    activeBtn.innerHTML = '<span class="spinner"></span> 生成中... <span class="timer" id="timer-' + commentId + '">0s</span>';
 
     try {
         const response = await fetch('/generate_reply', {
@@ -26,6 +37,9 @@ async function generateReply(commentId, videoId, commentText) {
                 video_id: videoId
             }),
         });
+
+        // Clear the timer
+        clearInterval(timerId);
 
         const data = await response.json();
 
@@ -55,6 +69,10 @@ async function generateReply(commentId, videoId, commentText) {
         document.getElementById(`reply-text-${commentId}`).style.display = 'block';
         document.getElementById(`btn-post-${commentId}`).style.display = 'block';
 
+        // Reset button state before switching
+        activeBtn.disabled = false;
+        activeBtn.textContent = originalText;
+
         // Switch buttons
         btn.style.display = 'none';
         if (regenBtn) {
@@ -65,6 +83,8 @@ async function generateReply(commentId, videoId, commentText) {
 
 
     } catch (error) {
+        // Clear the timer on error
+        clearInterval(timerId);
         alert('生成に失敗しました: ' + error);
         activeBtn.disabled = false;
         activeBtn.textContent = originalText;
@@ -434,4 +454,53 @@ function updateStatsUI(unrepliedChange, pendingChange, repliedChange) {
             repliedEl.textContent = Math.max(0, current + repliedChange);
         }
     }
+}
+
+// Template Management Functions
+let templateCache = null;
+
+async function toggleTemplates(commentId) {
+    const dropdown = document.getElementById(`templates-${commentId}`);
+
+    if (dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    // Load templates if not cached
+    if (!templateCache) {
+        const response = await fetch('/api/templates/list');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            templateCache = data.templates;
+        } else {
+            alert('テンプレートの読み込みに失敗しました');
+            return;
+        }
+    }
+
+    // Build dropdown
+    dropdown.innerHTML = '';
+    if (templateCache.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'template-option-empty';
+        emptyMsg.textContent = 'テンプレートがありません';
+        dropdown.appendChild(emptyMsg);
+    } else {
+        templateCache.forEach(template => {
+            const btn = document.createElement('button');
+            btn.className = 'template-option';
+            btn.textContent = template.name;
+            btn.onclick = () => insertTemplate(commentId, template.text);
+            dropdown.appendChild(btn);
+        });
+    }
+    dropdown.style.display = 'block';
+}
+
+function insertTemplate(commentId, text) {
+    const textarea = document.getElementById(`reply-text-${commentId}`);
+    textarea.value = text;
+    document.getElementById(`templates-${commentId}`).style.display = 'none';
 }
